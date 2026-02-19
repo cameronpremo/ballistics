@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+  <meta name="apple-mobile-web-app-capable" content="yes"/>
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
+  <meta name="apple-mobile-web-app-title" content="Ballistics"/>
+  <meta name="theme-color" content="#1a1c18"/>
+  <title>Field Ballistics</title>
+  <style>
+    :root {
+      --bg:#1a1c18; --bg2:#20231c; --bg3:#131510;
+      --border:#3a4228; --green:#8ab46e; --gold:#c8b96e;
+      --orange:#e8a06e; --blue:#6eb4c8; --red:#d47060;
+      --muted:#8a9268; --dim:#6b7a50; --text:#e8e3d5; --accent:#5c6b3a;
+    }
+    *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+    body{background:var(--bg);color:var(--text);font-family:'Georgia',serif;min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+
+    /* Header */
+    #header{background:linear-gradient(180deg,#2c3020 0%,#1a1c18 100%);border-bottom:2px solid var(--accent);padding:14px 18px;padding-top:calc(14px + env(safe-area-inset-top));display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+    #header h1{font-size:18px;color:var(--gold);letter-spacing:.04em}
+    #header p{font-size:9px;color:var(--muted);font-family:monospace;letter-spacing:.14em;margin-top:2px}
+
+    /* Tabs */
+    #tabs{display:flex;background:var(--bg2);border-bottom:1px solid var(--border);position:sticky;top:calc(58px + env(safe-area-inset-top));z-index:99}
+    .tab{flex:1;padding:10px 2px;background:transparent;border:none;color:var(--dim);font-family:monospace;font-size:10px;letter-spacing:.08em;cursor:pointer;border-bottom:2px solid transparent;transition:all .15s}
+    .tab.active{color:var(--gold);border-bottom-color:var(--gold)}
+
+    /* Panels */
+    .panel{display:none;padding:16px}.panel.active{display:block}
+
+    /* Section heads */
+    .sh{font-size:10px;color:var(--dim);font-family:monospace;letter-spacing:.2em;border-bottom:1px solid var(--border);padding-bottom:5px;margin:16px 0 8px}
+
+    /* Input rows */
+    .ir{display:flex;align-items:center;margin-bottom:8px;gap:6px}
+    .ir label{font-size:11px;color:var(--muted);font-family:monospace;flex:1}
+    .ir input[type=number]{width:84px;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-size:14px;text-align:right;font-family:monospace;outline:none}
+    .ir .unit{font-size:10px;color:var(--dim);font-family:monospace;width:28px}
+    input[type=text].field{background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-family:monospace;font-size:12px;outline:none;width:100%}
+    input[type=range]{width:100%;accent-color:var(--gold)}
+
+    /* Buttons */
+    .btn-grp{display:flex;gap:4px;margin-bottom:8px}
+    .btn-grp button{flex:1;padding:7px 4px;background:transparent;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;transition:all .15s}
+    .game-btn{width:100%;margin-bottom:4px;background:transparent;border-radius:4px;cursor:pointer;text-align:left;font-family:monospace;font-size:11px;padding:7px 10px;transition:all .15s;display:flex;justify-content:space-between}
+    #calc-btn{width:100%;padding:14px;margin-top:16px;background:linear-gradient(135deg,#5c7a2c,#8a9e3c);border:none;border-radius:8px;color:#1a1c18;font-weight:700;font-size:14px;letter-spacing:.15em;cursor:pointer;font-family:monospace}
+    #calc-btn:disabled{background:var(--border);color:var(--dim)}
+    .toggle-btn{background:transparent;border-radius:4px;cursor:pointer;font-family:monospace;font-size:11px;letter-spacing:.08em;padding:5px 12px;transition:all .15s}
+
+    /* ── RIFLES TAB ── */
+    #rifles-list{margin-bottom:16px}
+    .rifle-card{background:var(--bg3);border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:10px;position:relative}
+    .rifle-card.active-rifle{border-color:var(--gold)}
+    .rifle-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+    .rifle-name{font-size:14px;color:var(--gold);font-family:monospace;font-weight:700}
+    .rifle-meta{font-size:10px;color:var(--muted);font-family:monospace;line-height:1.7}
+    .rifle-actions{display:flex;gap:6px;margin-top:10px}
+    .rc-btn{padding:5px 12px;border-radius:4px;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:monospace;font-size:10px;cursor:pointer;transition:all .15s}
+    .rc-btn.primary{border-color:var(--gold);color:var(--gold)}
+    .rc-btn.danger{border-color:var(--red);color:var(--red)}
+    .rc-btn.active-load{background:rgba(200,185,110,.15);border-color:var(--gold);color:var(--gold)}
+
+    /* New/Edit rifle form */
+    #rifle-form-wrap{background:var(--bg3);border:1px solid var(--accent);border-radius:10px;padding:16px;margin-bottom:16px;display:none}
+    #rifle-form-wrap h3{font-size:10px;color:var(--gold);font-family:monospace;letter-spacing:.2em;margin-bottom:12px}
+    .form-row{margin-bottom:10px}
+    .form-row label{display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px;letter-spacing:.1em}
+    .form-row-2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px}
+    .form-actions{display:flex;gap:8px;margin-top:14px}
+    .form-actions button{flex:1;padding:10px;border-radius:6px;font-family:monospace;font-size:12px;cursor:pointer;font-weight:600}
+    #form-save{background:linear-gradient(135deg,#5c7a2c,#8a9e3c);border:none;color:#1a1c18}
+    #form-cancel{background:transparent;border:1px solid var(--border);color:var(--muted)}
+
+    /* Summary cards */
+    #summary-cards{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+    .sum-card{background:var(--bg2);border-radius:8px;padding:10px 12px;border:1px solid var(--border)}
+    .sum-card .cl{font-size:9px;color:var(--dim);font-family:monospace;letter-spacing:.12em;margin-bottom:4px}
+    .sum-card .cv{font-size:20px;font-weight:700;font-family:monospace}
+    .sum-card .cs{font-size:10px;color:var(--muted);font-family:monospace;margin-top:2px}
+
+    /* Dope card */
+    #dope-card-box{background:#0f1810;border:1px solid #2a4a1a;border-radius:8px;padding:12px;margin-bottom:16px}
+    #dope-card-box h3{font-size:10px;color:#5a9a3a;font-family:monospace;letter-spacing:.16em;margin-bottom:4px}
+    .scope-line{font-size:11px;color:var(--green);font-family:monospace;margin-bottom:10px}
+    .dope-grid{display:flex;min-width:600px}
+    .dope-cell{flex:1;border-left:1px solid #2a4a1a;padding:6px 8px;min-width:58px}
+    .dope-cell .dcr{font-size:9px;color:#5a9a3a;font-family:monospace}
+    .dope-cell .dcm{font-size:15px;font-weight:700;color:var(--green);font-family:monospace}
+    .dope-cell .dcu{font-size:9px;color:#4a7a30;font-family:monospace}
+    .dope-cell .dcc{font-size:10px;color:var(--gold);font-family:monospace;margin-top:2px}
+
+    /* Table */
+    #results-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch}
+    table{border-collapse:collapse;font-family:monospace;font-size:12px;min-width:560px;width:100%}
+    thead tr{background:var(--bg2);border-bottom:2px solid var(--accent)}
+    th{padding:8px 8px;text-align:right;font-size:10px;font-weight:600;white-space:nowrap;letter-spacing:.05em}
+    td{padding:6px 8px;text-align:right}
+    .r100{border-bottom:1px solid var(--border)}.r50{border-bottom:1px solid #242620}
+    .rzero{background:rgba(90,160,90,.09)}.rbeyond{opacity:.5;background:rgba(160,50,30,.06)}.ralt{background:rgba(255,255,255,.013)}
+
+    /* Chart */
+    svg.chart{background:var(--bg3);border-radius:8px;border:1px solid var(--border);display:block;width:100%}
+
+    /* Empty */
+    .empty-state{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;gap:12px;color:#3a4228;text-align:center}
+    .empty-state .ei{font-size:48px}.empty-state p{font-family:monospace;font-size:11px;letter-spacing:.16em;line-height:1.7}
+
+    /* Active rifle banner */
+    #active-banner{background:rgba(200,185,110,.08);border:1px solid var(--accent);border-radius:8px;padding:10px 14px;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+    #active-banner .ab-label{font-size:9px;color:var(--dim);font-family:monospace;letter-spacing:.15em}
+    #active-banner .ab-name{font-size:13px;color:var(--gold);font-family:monospace;font-weight:700}
+    #active-banner .ab-meta{font-size:10px;color:var(--muted);font-family:monospace}
+
+    .disclaimer{margin-top:16px;padding:12px;background:var(--bg2);border:1px solid var(--border);border-radius:6px;font-size:10px;color:var(--dim);font-family:monospace;line-height:1.7}
+  </style>
+</head>
+<body>
+
+<div id="header">
+  <div>
+    <h1>🎯 Field Ballistics</h1>
+    <p>HUNTING · SPORT · ELR · 0–1500 YARDS</p>
+  </div>
+  <div style="font-size:9px;color:var(--dim);font-family:monospace;text-align:right;line-height:1.8">G1 DRAG<br>AIR CORRECTED</div>
+</div>
+
+<div id="tabs">
+  <button class="tab active"  onclick="switchTab('rifles')">🔫 RIFLES</button>
+  <button class="tab"         onclick="switchTab('setup')">⚙ SETUP</button>
+  <button class="tab"         onclick="switchTab('results')">📊 RESULTS</button>
+  <button class="tab"         onclick="switchTab('dope')">📋 DOPE</button>
+</div>
+
+<!-- ══════════════ RIFLES TAB ══════════════ -->
+<div id="panel-rifles" class="panel active">
+
+  <!-- New rifle form -->
+  <div id="rifle-form-wrap">
+    <h3 id="form-title">NEW RIFLE PROFILE</h3>
+    <div class="form-row"><label>RIFLE NAME</label><input type="text" class="field" id="f-name" placeholder="e.g. Christensen Ridgeline FFT"></div>
+    <div class="form-row-2">
+      <div><label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">CALIBER</label><input type="text" class="field" id="f-cal" placeholder="6.5 PRC"></div>
+      <div><label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">BARREL</label><input type="text" class="field" id="f-barrel" placeholder='20"'></div>
+    </div>
+    <div class="form-row"><label>SCOPE</label><input type="text" class="field" id="f-scope" placeholder="Swarovski Z5(i) 3.5-18x44 P"></div>
+    <div class="form-row"><label>AMMO / LOAD</label><input type="text" class="field" id="f-ammo" placeholder="Hornady ELD-X 143gr"></div>
+    <div class="form-row-2">
+      <div><label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">MUZZLE VEL (fps)</label><input type="number" class="field" id="f-mv" placeholder="2959"></div>
+      <div><label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">BULLET WT (gr)</label><input type="number" class="field" id="f-bw" placeholder="143"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">BC (G1)</label><input type="number" class="field" id="f-bc" placeholder="0.62" step="0.001"></div>
+      <div><label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">SCOPE HEIGHT (in)</label><input type="number" class="field" id="f-sh" placeholder="1.7" step="0.1"></div>
+    </div>
+    <div class="form-row-2">
+      <div><label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">ZERO RANGE (yd)</label><input type="number" class="field" id="f-zero" placeholder="200"></div>
+      <div>
+        <label style="display:block;font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">TURRET</label>
+        <select id="f-clicks" style="width:100%;background:var(--bg3);border:1px solid var(--border);border-radius:4px;color:var(--text);padding:6px 8px;font-family:monospace;font-size:12px;outline:none">
+          <option value="4">¼ MOA (4 clicks)</option>
+          <option value="8">⅛ MOA (8 clicks)</option>
+          <option value="2">½ MOA (2 clicks)</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-actions">
+      <button id="form-save" onclick="saveRifle()">SAVE PROFILE</button>
+      <button id="form-cancel" onclick="hideForm()">CANCEL</button>
+    </div>
+  </div>
+
+  <!-- Add new button -->
+  <button onclick="showNewForm()" id="add-rifle-btn" style="width:100%;padding:13px;background:transparent;border:1px dashed var(--accent);border-radius:8px;color:var(--dim);font-family:monospace;font-size:12px;letter-spacing:.15em;cursor:pointer;margin-bottom:16px">
+    + NEW RIFLE PROFILE
+  </button>
+
+  <!-- Saved rifles list -->
+  <div id="rifles-list"></div>
+</div>
+
+<!-- ══════════════ SETUP TAB ══════════════ -->
+<div id="panel-setup" class="panel">
+
+  <!-- Active rifle banner -->
+  <div id="active-banner">
+    <div>
+      <div class="ab-label">ACTIVE RIFLE</div>
+      <div class="ab-name" id="ab-name">—</div>
+      <div class="ab-meta" id="ab-meta">No rifle loaded</div>
+    </div>
+    <button onclick="switchTab('rifles')" style="background:transparent;border:1px solid var(--border);color:var(--dim);border-radius:4px;padding:5px 10px;font-family:monospace;font-size:10px;cursor:pointer">SWITCH</button>
+  </div>
+
+  <div class="sh">BALLISTIC DATA</div>
+  <div class="ir"><label>Muzzle Velocity</label><input type="number" id="mv" value="2959"><span class="unit">fps</span></div>
+  <div class="ir"><label>Ballistic Coeff (G1)</label><input type="number" id="bc" value="0.62" step="0.001"><span class="unit"></span></div>
+  <div class="ir"><label>Bullet Weight</label><input type="number" id="bw" value="143"><span class="unit">gr</span></div>
+
+  <div class="sh">RIFLE / OPTIC SETUP</div>
+  <div class="ir"><label>Zero Range</label><input type="number" id="zero" value="200"><span class="unit">yd</span></div>
+  <div class="ir"><label>Scope Height</label><input type="number" id="sh-inp" value="1.7" step="0.1"><span class="unit">in</span></div>
+  <div class="sh" style="margin-top:8px">TURRET</div>
+  <div class="btn-grp" id="turret-btns"></div>
+
+  <div class="sh">ENVIRONMENT</div>
+  <div class="ir"><label>Wind Speed</label><input type="number" id="ws" value="10"><span class="unit">mph</span></div>
+  <div style="margin-bottom:10px">
+    <div style="font-size:10px;color:var(--dim);font-family:monospace;margin-bottom:4px">WIND ANGLE — <span id="wa-disp">90</span>° <span style="opacity:.6">(0°=head · 90°=cross · 180°=tail)</span></div>
+    <input type="range" id="wa" min="0" max="180" value="90" oninput="document.getElementById('wa-disp').textContent=this.value">
+  </div>
+  <div class="ir"><label>Altitude</label><input type="number" id="alt" value="0"><span class="unit">ft</span></div>
+  <div class="ir"><label>Temperature</label><input type="number" id="temp" value="59"><span class="unit">°F</span></div>
+
+  <div class="sh">ETHICAL HARVEST</div>
+  <div id="game-list"></div>
+
+  <button id="calc-btn" onclick="runCalc()">▶  CALCULATE TRAJECTORY</button>
+</div>
+
+<!-- ══════════════ RESULTS TAB ══════════════ -->
+<div id="panel-results" class="panel">
+  <div id="res-empty" class="empty-state">
+    <div class="ei">📊</div><p>CONFIGURE SETUP<br>AND CALCULATE</p>
+  </div>
+  <div id="res-content" style="display:none">
+    <div id="summary-cards"></div>
+    <div style="display:flex;gap:8px;margin-bottom:10px;flex-wrap:wrap">
+      <button class="toggle-btn" id="moa-toggle" onclick="toggleMOA()" style="border:1px solid var(--border);color:var(--dim)">☆ HIGHLIGHT MOA</button>
+      <button class="toggle-btn" id="clicks-toggle" onclick="toggleClicks()" style="border:1px solid var(--blue);color:var(--blue);background:rgba(110,180,200,.1)">★ SHOW CLICKS</button>
+    </div>
+    <div id="results-table-wrap"><table id="results-table"></table></div>
+    <div id="chart-wrap" style="margin-top:16px">
+      <p style="font-size:10px;color:var(--dim);font-family:monospace;letter-spacing:.18em;margin-bottom:8px">TRAJECTORY PROFILE</p>
+      <svg id="traj-chart" class="chart" viewBox="0 0 900 170"></svg>
+    </div>
+    <div class="disclaimer">⚠ Estimates only — point-mass G1 model. Confirm with live fire. Never shoot beyond your confirmed accuracy limit.</div>
+  </div>
+</div>
+
+<!-- ══════════════ DOPE TAB ══════════════ -->
+<div id="panel-dope" class="panel">
+  <div id="dope-empty" class="empty-state">
+    <div class="ei">📋</div><p>CALCULATE FIRST TO<br>GENERATE DOPE CARD</p>
+  </div>
+  <div id="dope-content" style="display:none">
+    <div id="dope-card-box">
+      <h3>BALLISTIC CAM DOPE CARD</h3>
+      <div class="scope-line" id="dope-scope-line"></div>
+      <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+        <div class="dope-grid" id="dope-grid"></div>
+      </div>
+    </div>
+    <div class="sh">FULL COME-UP TABLE (100YD INCREMENTS)</div>
+    <div style="overflow-x:auto;-webkit-overflow-scrolling:touch">
+      <table id="dope-table" style="min-width:380px;width:100%"></table>
+    </div>
+    <div class="disclaimer">
+      💡 <strong style="color:var(--gold)">How to use:</strong> Find your range, dial the MOA value UP on your elevation turret.
+      Wind holdover is for a <span id="dope-wind-ref"></span> mph full-value crosswind — scale for actual angle.
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════════════════════
+let results       = null;
+let highlightMOA  = false;
+let showClicks    = true;
+let clicksPerMOA  = 4;
+let gameTarget    = 'Elk/Bear';
+let maxEthical    = 0;
+let activeRifleId = null;   // id of loaded rifle
+let editingId     = null;   // id being edited in form (null = new)
+
+const ENERGY = { 'Varmint':500, 'Deer/Antelope':1000, 'Elk/Bear':1500, 'Moose/Bison':2000 };
+
+// ═══════════════════════════════════════════════════════════
+// RIFLE STORAGE  (localStorage)
+// ═══════════════════════════════════════════════════════════
+function loadRifles() {
+  try { return JSON.parse(localStorage.getItem('bf_rifles') || '[]'); }
+  catch(e) { return []; }
+}
+function saveRifles(arr) {
+  localStorage.setItem('bf_rifles', JSON.stringify(arr));
+}
+function genId() { return Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+
+// Default rifle pre-seeded
+function seedDefault() {
+  const existing = loadRifles();
+  if (existing.length === 0) {
+    const def = {
+      id: genId(),
+      name: 'Christensen Arms Ridgeline FFT',
+      cal: '6.5 PRC', barrel: '20"',
+      scope: 'Swarovski Z5(i) 3.5-18x44 P',
+      ammo: 'Hornady ELD-X 143gr',
+      mv: 2959, bw: 143, bc: 0.62, sh: 1.7,
+      zero: 200, clicks: 4,
+    };
+    saveRifles([def]);
+    return [def];
+  }
+  return existing;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RIFLE FORM
+// ═══════════════════════════════════════════════════════════
+function showNewForm() {
+  editingId = null;
+  document.getElementById('form-title').textContent = 'NEW RIFLE PROFILE';
+  ['name','cal','barrel','scope','ammo','mv','bw','bc','sh','zero'].forEach(k => {
+    document.getElementById('f-'+k).value = '';
+  });
+  document.getElementById('f-clicks').value = '4';
+  document.getElementById('rifle-form-wrap').style.display = 'block';
+  document.getElementById('add-rifle-btn').style.display = 'none';
+  document.getElementById('rifle-form-wrap').scrollIntoView({behavior:'smooth'});
+}
+
+function showEditForm(id) {
+  const rifles = loadRifles();
+  const r = rifles.find(x => x.id === id);
+  if (!r) return;
+  editingId = id;
+  document.getElementById('form-title').textContent = 'EDIT RIFLE PROFILE';
+  document.getElementById('f-name').value   = r.name;
+  document.getElementById('f-cal').value    = r.cal;
+  document.getElementById('f-barrel').value = r.barrel;
+  document.getElementById('f-scope').value  = r.scope;
+  document.getElementById('f-ammo').value   = r.ammo;
+  document.getElementById('f-mv').value     = r.mv;
+  document.getElementById('f-bw').value     = r.bw;
+  document.getElementById('f-bc').value     = r.bc;
+  document.getElementById('f-sh').value     = r.sh;
+  document.getElementById('f-zero').value   = r.zero;
+  document.getElementById('f-clicks').value = r.clicks;
+  document.getElementById('rifle-form-wrap').style.display = 'block';
+  document.getElementById('add-rifle-btn').style.display = 'none';
+  document.getElementById('rifle-form-wrap').scrollIntoView({behavior:'smooth'});
+}
+
+function hideForm() {
+  editingId = null;
+  document.getElementById('rifle-form-wrap').style.display = 'none';
+  document.getElementById('add-rifle-btn').style.display = 'block';
+}
+
+function saveRifle() {
+  const name = document.getElementById('f-name').value.trim();
+  if (!name) { alert('Please enter a rifle name.'); return; }
+  const entry = {
+    id:      editingId || genId(),
+    name,
+    cal:     document.getElementById('f-cal').value.trim()    || '—',
+    barrel:  document.getElementById('f-barrel').value.trim() || '—',
+    scope:   document.getElementById('f-scope').value.trim()  || '—',
+    ammo:    document.getElementById('f-ammo').value.trim()   || '—',
+    mv:      parseFloat(document.getElementById('f-mv').value)    || 2800,
+    bw:      parseFloat(document.getElementById('f-bw').value)    || 140,
+    bc:      parseFloat(document.getElementById('f-bc').value)    || 0.5,
+    sh:      parseFloat(document.getElementById('f-sh').value)    || 1.5,
+    zero:    parseFloat(document.getElementById('f-zero').value)  || 100,
+    clicks:  parseInt(document.getElementById('f-clicks').value)  || 4,
+  };
+  let rifles = loadRifles();
+  if (editingId) {
+    rifles = rifles.map(r => r.id === editingId ? entry : r);
+    // if this was the active rifle, reload it
+    if (activeRifleId === editingId) loadRifleIntoSetup(entry);
+  } else {
+    rifles.push(entry);
+  }
+  saveRifles(rifles);
+  hideForm();
+  renderRiflesList();
+}
+
+function deleteRifle(id) {
+  if (!confirm('Delete this rifle profile?')) return;
+  let rifles = loadRifles().filter(r => r.id !== id);
+  saveRifles(rifles);
+  if (activeRifleId === id) {
+    activeRifleId = null;
+    updateActiveBanner(null);
+  }
+  renderRiflesList();
+}
+
+function loadRifleIntoSetup(r) {
+  activeRifleId = r.id;
+  document.getElementById('mv').value   = r.mv;
+  document.getElementById('bc').value   = r.bc;
+  document.getElementById('bw').value   = r.bw;
+  document.getElementById('zero').value = r.zero;
+  document.getElementById('sh-inp').value = r.sh;
+  clicksPerMOA = r.clicks;
+  setTurret(r.clicks, false);
+  updateActiveBanner(r);
+  renderRiflesList();
+  switchTab('setup');
+}
+
+function updateActiveBanner(r) {
+  if (!r) {
+    document.getElementById('ab-name').textContent = '—';
+    document.getElementById('ab-meta').textContent = 'No rifle loaded — go to Rifles tab';
+    return;
+  }
+  document.getElementById('ab-name').textContent = r.name;
+  document.getElementById('ab-meta').textContent = `${r.cal} · ${r.barrel} bbl · ${r.ammo}`;
+}
+
+function renderRiflesList() {
+  const rifles = loadRifles();
+  const el = document.getElementById('rifles-list');
+  if (rifles.length === 0) {
+    el.innerHTML = `<div class="empty-state"><div class="ei">🔫</div><p>NO RIFLES SAVED YET<br>TAP + NEW RIFLE PROFILE</p></div>`;
+    return;
+  }
+  el.innerHTML = rifles.map(r => {
+    const isActive = r.id === activeRifleId;
+    return `<div class="rifle-card ${isActive?'active-rifle':''}">
+      <div class="rifle-card-header">
+        <div>
+          <div class="rifle-name">${isActive?'★ ':''}${r.name}</div>
+          ${isActive?`<div style="font-size:9px;color:var(--gold);font-family:monospace;letter-spacing:.1em;margin-top:2px">ACTIVE</div>`:''}
+        </div>
+      </div>
+      <div class="rifle-meta">
+        ⚙️ ${r.cal} · ${r.barrel} bbl &nbsp;|&nbsp; 🔭 ${r.scope}<br>
+        🔴 ${r.ammo}<br>
+        📐 ${r.mv} fps · BC ${r.bc} · ${r.bw}gr · Zero ${r.zero}yd · ${r.sh}" scope ht
+      </div>
+      <div class="rifle-actions">
+        <button class="rc-btn ${isActive?'active-load':'primary'}" onclick="loadRifleIntoSetup(${JSON.stringify(r).replace(/"/g,'&quot;')})">
+          ${isActive?'✓ LOADED':'LOAD & CALCULATE'}
+        </button>
+        <button class="rc-btn" onclick="showEditForm('${r.id}')">EDIT</button>
+        <button class="rc-btn danger" onclick="deleteRifle('${r.id}')">DELETE</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════════════════════
+// PHYSICS
+// ═══════════════════════════════════════════════════════════
+function adr(alt, tempF) {
+  const p = 29.92 * Math.pow(1 - alt*6.87535e-6, 5.2561);
+  return (p/29.92) * (518.67/(tempF+459.67));
+}
+function retard(v, bc, ad) { return (ad*v*v)/(bc*7000); }
+
+function sim(mv, bc, ad, yd, ang=0) {
+  const dt=.0005, tgt=yd*3-.01;
+  let x=0,y=0,vx=mv*Math.cos(ang),vy=mv*Math.sin(ang);
+  while(x<tgt){const v=Math.sqrt(vx*vx+vy*vy),r=retard(v,bc,ad);vx+=(-r*vx/v)*dt;vy+=(-r*vy/v-32.174)*dt;x+=vx*dt;y+=vy*dt}
+  return{y,v:Math.sqrt(vx*vx+vy*vy)};
+}
+function tof(mv, bc, ad, yd) {
+  const dt=.0005,tgt=yd*3-.01;
+  let x=0,t=0,vx=mv,vy=0;
+  while(x<tgt){const v=Math.sqrt(vx*vx+vy*vy),r=retard(v,bc,ad);vx+=(-r*vx/v)*dt;vy+=(-r*vy/v-32.174)*dt;x+=vx*dt;t+=dt}
+  return t;
+}
+function zeroAng(mv,bc,ad,zy,sh){
+  let a=0;
+  for(let i=0;i<100;i++){const{y}=sim(mv,bc,ad,zy,a);const sl=-(sh/12)+(zy*3)*Math.tan(a);const e=y-sl;if(Math.abs(e)<.00005)break;a+=e>0?-.00005:.00005}
+  return a;
+}
+function toMOA(inches,yd){return yd?inches/(yd/100*1.0472):0}
+
+function calcTrajectory(){
+  const mv=+document.getElementById('mv').value, bc=+document.getElementById('bc').value;
+  const bw=+document.getElementById('bw').value, zero=+document.getElementById('zero').value;
+  const sh=+document.getElementById('sh-inp').value, ws=+document.getElementById('ws').value;
+  const wa=+document.getElementById('wa').value, alt=+document.getElementById('alt').value;
+  const temp=+document.getElementById('temp').value;
+  const ad=adr(alt,temp), cross=ws*Math.sin(wa*Math.PI/180), head=ws*Math.cos(wa*Math.PI/180);
+  const effMV=mv*(1-head*.00147), za=zeroAng(effMV,bc,ad,zero,sh);
+  const out=[];
+  for(let r=0;r<=1500;r+=50){
+    if(r===0){const e0=(bw*effMV*effMV)/450437;out.push({range:0,drop:0,dropMOA:0,clicks:0,windDrift:0,windMOA:0,windClicks:0,velocity:Math.round(effMV),energy:Math.round(e0),tof:0});continue}
+    const{y,v}=sim(effMV,bc,ad,r,za);
+    const sl=-(sh/12)+(r*3)*Math.tan(za), drop=(y-sl)*12;
+    const tf=tof(effMV,bc,ad,r), wd=cross*(tf-(r*3)/effMV)*12;
+    const en=(bw*v*v)/450437;
+    const dM=toMOA(Math.abs(drop),r)*(drop<0?1:-1), wM=toMOA(Math.abs(wd),r)*(wd>=0?1:-1);
+    out.push({range:r,drop,dropMOA:dM,clicks:Math.round(Math.abs(dM)*clicksPerMOA)*(dM>=0?1:-1),windDrift:wd,windMOA:wM,windClicks:Math.round(Math.abs(wM)*clicksPerMOA)*(wM>=0?1:-1),velocity:Math.round(v),energy:Math.round(en),tof:tf});
+  }
+  return out;
+}
+
+// ═══════════════════════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════════════════════
+function renderSummaryCards(){
+  const r5=results.find(r=>r.range===500), r10=results.find(r=>r.range===1000);
+  document.getElementById('summary-cards').innerHTML=`
+    <div class="sum-card" style="border-top:2px solid var(--orange)"><div class="cl">MAX ETHICAL</div><div class="cv" style="color:var(--orange)">${maxEthical} yd</div><div class="cs">${gameTarget}</div></div>
+    <div class="sum-card" style="border-top:2px solid var(--gold)"><div class="cl">MUZZLE ENERGY</div><div class="cv" style="color:var(--gold)">${results[0].energy} ft·lb</div><div class="cs">at muzzle</div></div>
+    <div class="sum-card" style="border-top:2px solid var(--green)"><div class="cl">500 YD</div><div class="cv" style="color:var(--green)">${r5.drop.toFixed(1)}"</div><div class="cs">${r5.dropMOA.toFixed(2)} MOA · ${r5.clicks>=0?'+':''}${r5.clicks} clicks</div></div>
+    <div class="sum-card" style="border-top:2px solid var(--blue)"><div class="cl">1000 YD</div><div class="cv" style="color:var(--blue)">${r10.drop.toFixed(1)}"</div><div class="cs">${r10.dropMOA.toFixed(2)} MOA · ${r10.clicks>=0?'+':''}${r10.clicks} clicks</div></div>`;
+}
+
+function renderTable(){
+  const zero=+document.getElementById('zero').value;
+  const hdrs=[['RANGE','var(--text)'],['DROP (in)','var(--text)'],['↑ MOA','var(--gold)'],...(showClicks?[['CLICKS ↑','var(--blue)']]:[]),['WIND (in)','var(--text)'],['WIND MOA','var(--blue)'],...(showClicks?[['W.CLKS','var(--blue)']]:[]),['VEL','var(--text)'],['ENERGY','var(--text)'],['TOF','var(--dim)']];
+  let h='<thead><tr>'+hdrs.map(([n,c])=>`<th style="color:${c}">${n}</th>`).join('')+'</tr></thead><tbody>';
+  results.forEach((r,i)=>{
+    const byd=r.range>maxEthical&&r.range>0, isZ=r.range===zero, is1=r.range%100===0;
+    let cls=is1?'r100':'r50'; if(isZ)cls+=' rzero'; else if(byd)cls+=' rbeyond'; else if(i%2)cls+=' ralt';
+    const ec=r.energy<ENERGY[gameTarget]?'var(--red)':r.energy<ENERGY[gameTarget]*1.5?'#d4a060':'var(--green)';
+    const mHL=highlightMOA&&is1;
+    h+=`<tr class="${cls}">
+      <td style="color:${isZ?'var(--green)':is1?'var(--text)':'#9a9278'};font-weight:${is1?700:400}">${r.range}${isZ?'✓':''}</td>
+      <td style="color:${r.drop<0?'var(--red)':'var(--green)'}">${r.drop>=0?'+':''}${r.drop.toFixed(1)}</td>
+      <td style="color:${mHL?'var(--gold)':'#a09268'};font-weight:${mHL?700:400};background:${mHL?'rgba(200,185,110,.07)':'transparent'}">${r.range===0?'—':`${r.dropMOA>=0?'+':''}${r.dropMOA.toFixed(2)}`}</td>
+      ${showClicks?`<td style="color:var(--blue);font-weight:${is1?700:400}">${r.range===0?'—':`${r.clicks>=0?'+':''}${r.clicks}`}</td>`:''}
+      <td style="color:#a09880">${r.windDrift>=0?'+':''}${r.windDrift.toFixed(1)}</td>
+      <td style="color:#7ab0c4">${r.range===0?'—':`${r.windMOA>=0?'+':''}${r.windMOA.toFixed(2)}`}</td>
+      ${showClicks?`<td style="color:#7ab0c4">${r.range===0?'—':`${r.windClicks>=0?'+':''}${r.windClicks}`}</td>`:''}
+      <td style="color:${r.velocity<1340?'var(--red)':'var(--text)'}">${r.velocity}</td>
+      <td style="color:${ec};font-weight:600">${r.energy}</td>
+      <td style="color:var(--dim)">${r.tof.toFixed(3)}</td>
+    </tr>`;
+  });
+  document.getElementById('results-table').innerHTML=h+'</tbody>';
+}
+
+function renderChart(){
+  const W=900,H=170,pad={t:14,b:30,l:56,r:16};
+  const iw=W-pad.l-pad.r,ih=H-pad.t-pad.b;
+  const drops=results.map(r=>r.drop), minD=Math.min(...drops), maxD=Math.max(...drops), span=maxD-minD||1;
+  const tx=r=>pad.l+(r/1500)*iw, ty=d=>pad.t+((maxD-d)/span)*ih;
+  const pts=results.map(r=>({x:tx(r.range),y:ty(r.drop),range:r.range}));
+  const pd=pts.map((p,i)=>`${i===0?'M':'L'} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(' ');
+  const zy=ty(0), ex=tx(maxEthical), ep=(maxEthical/1500)*100;
+  document.getElementById('traj-chart').innerHTML=`
+    <defs><linearGradient id="tg" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#8ab46e"/><stop offset="${ep}%" stop-color="#c8b96e"/>
+      <stop offset="${Math.min(ep+.5,100)}%" stop-color="#d47060"/><stop offset="100%" stop-color="#7a3020"/>
+    </linearGradient></defs>
+    ${[0,300,600,900,1200,1500].map(r=>`<line x1="${tx(r)}" y1="${pad.t}" x2="${tx(r)}" y2="${H-pad.b}" stroke="#242820" stroke-width="${r%600===0?1:.5}"/>
+    <text x="${tx(r)}" y="${H-pad.b+14}" fill="#6b7a50" font-size="9" text-anchor="middle" font-family="monospace">${r}</text>`).join('')}
+    <line x1="${pad.l}" y1="${zy}" x2="${W-pad.r}" y2="${zy}" stroke="#5c6b3a" stroke-dasharray="5,4"/>
+    <text x="${pad.l-4}" y="${zy+3}" fill="#5c6b3a" font-size="9" text-anchor="end" font-family="monospace">0"</text>
+    ${maxEthical>0&&maxEthical<1500?`<line x1="${ex}" y1="${pad.t}" x2="${ex}" y2="${H-pad.b}" stroke="#b46c3c" stroke-dasharray="3,3" stroke-width="1.5"/>
+    <text x="${ex+4}" y="${pad.t+10}" fill="#b46c3c" font-size="9" font-family="monospace">${maxEthical}yd</text>`:''}
+    <path d="${pd} L ${pts[pts.length-1].x} ${H-pad.b} L ${pts[0].x} ${H-pad.b} Z" fill="#5c7a2c" opacity=".12"/>
+    <path d="${pd}" fill="none" stroke="url(#tg)" stroke-width="2.5"/>
+    ${pts.filter(p=>p.range%100===0&&p.range>0).map(p=>`<circle cx="${p.x}" cy="${p.y}" r="3" fill="${p.range>maxEthical?'#d47060':'#c8b96e'}" stroke="#131510" stroke-width="1"/>`).join('')}
+    ${[minD,(minD+maxD)/2,maxD].map(d=>`<text x="${pad.l-4}" y="${ty(d)+3}" fill="#6b7a50" font-size="9" text-anchor="end" font-family="monospace">${d.toFixed(0)}"</text>`).join('')}`;
+}
+
+function renderDopeCard(){
+  const zero=+document.getElementById('zero').value, ws=+document.getElementById('ws').value;
+  const rifles=loadRifles(), ar=rifles.find(r=>r.id===activeRifleId);
+  const scopeName=ar?ar.scope:'—';
+  const cpmL=clicksPerMOA===4?'¼':clicksPerMOA===8?'⅛':'½';
+  document.getElementById('dope-scope-line').textContent=`${scopeName} · ${cpmL} MOA · Zero ${zero}yd`;
+  document.getElementById('dope-wind-ref').textContent=ws;
+  const r100=[100,200,300,400,500,600,700,800,900,1000].map(r=>results.find(d=>d.range===r)).filter(Boolean);
+  document.getElementById('dope-grid').innerHTML=r100.map(r=>`
+    <div class="dope-cell" style="opacity:${r.range>maxEthical?.4:1}">
+      <div class="dcr">${r.range}yd</div>
+      <div class="dcm">${r.dropMOA.toFixed(1)}</div>
+      <div class="dcu">MOA</div>
+      <div class="dcc">${r.clicks>=0?'+':''}${r.clicks}↑</div>
+    </div>`).join('');
+  const rows=results.filter(r=>r.range>0&&r.range%100===0);
+  let dh=`<thead><tr style="background:var(--bg2);border-bottom:2px solid var(--accent)">
+    <th style="color:var(--gold)">RANGE</th><th style="color:var(--gold)">↑ MOA</th>
+    ${showClicks?'<th style="color:var(--blue)">CLICKS</th>':''}
+    <th style="color:var(--blue)">WIND MOA</th>
+    ${showClicks?'<th style="color:var(--blue)">W.CLKS</th>':''}
+    <th style="color:var(--text)">DROP</th><th style="color:var(--text)">VEL</th><th style="color:var(--text)">ENERGY</th>
+  </tr></thead><tbody>`;
+  rows.forEach(r=>{
+    const byd=r.range>maxEthical;
+    const ec=r.energy<ENERGY[gameTarget]?'var(--red)':r.energy<ENERGY[gameTarget]*1.5?'#d4a060':'var(--green)';
+    dh+=`<tr style="border-bottom:1px solid var(--border);opacity:${byd?.45:1}">
+      <td style="color:${byd?'var(--red)':'var(--gold)'};font-weight:700">${r.range}yd</td>
+      <td style="color:var(--gold);font-weight:700">${r.dropMOA>=0?'+':''}${r.dropMOA.toFixed(2)}</td>
+      ${showClicks?`<td style="color:var(--blue);font-weight:700">${r.clicks>=0?'+':''}${r.clicks}</td>`:''}
+      <td style="color:#7ab0c4">${r.windMOA>=0?'+':''}${r.windMOA.toFixed(2)}</td>
+      ${showClicks?`<td style="color:#7ab0c4">${r.windClicks>=0?'+':''}${r.windClicks}</td>`:''}
+      <td style="color:${r.drop<0?'var(--red)':'var(--green)'}">${r.drop>=0?'+':''}${r.drop.toFixed(1)}"</td>
+      <td>${r.velocity}</td><td style="color:${ec};font-weight:600">${r.energy}</td>
+    </tr>`;
+  });
+  document.getElementById('dope-table').innerHTML=dh+'</tbody>';
+}
+
+// ═══════════════════════════════════════════════════════════
+// ACTIONS
+// ═══════════════════════════════════════════════════════════
+function runCalc(){
+  const btn=document.getElementById('calc-btn');
+  btn.disabled=true; btn.textContent='CALCULATING…';
+  setTimeout(()=>{
+    results=calcTrajectory();
+    maxEthical=results.findLast(r=>r.energy>=ENERGY[gameTarget])?.range??0;
+    document.getElementById('res-empty').style.display='none';
+    document.getElementById('res-content').style.display='block';
+    document.getElementById('dope-empty').style.display='none';
+    document.getElementById('dope-content').style.display='block';
+    renderSummaryCards(); renderTable(); renderChart(); renderDopeCard();
+    btn.disabled=false; btn.textContent='▶  CALCULATE TRAJECTORY';
+    switchTab('results');
+  },50);
+}
+
+function switchTab(name){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.getElementById('panel-'+name).classList.add('active');
+  const idx=['rifles','setup','results','dope'].indexOf(name);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+}
+
+function toggleMOA(){
+  highlightMOA=!highlightMOA;
+  const b=document.getElementById('moa-toggle');
+  b.style.border=`1px solid ${highlightMOA?'var(--gold)':'var(--border)'}`;
+  b.style.color=highlightMOA?'var(--gold)':'var(--dim)';
+  b.style.background=highlightMOA?'rgba(200,185,110,.1)':'transparent';
+  b.textContent=(highlightMOA?'★':'☆')+' HIGHLIGHT MOA';
+  if(results)renderTable();
+}
+
+function toggleClicks(){
+  showClicks=!showClicks;
+  const b=document.getElementById('clicks-toggle');
+  b.style.border=`1px solid ${showClicks?'var(--blue)':'var(--border)'}`;
+  b.style.color=showClicks?'var(--blue)':'var(--dim)';
+  b.style.background=showClicks?'rgba(110,180,200,.1)':'transparent';
+  b.textContent=(showClicks?'★':'☆')+' SHOW CLICKS';
+  if(results){renderTable();renderDopeCard();}
+}
+
+function setTurret(v, rerender=true){
+  clicksPerMOA=v;
+  document.querySelectorAll('#turret-btns button').forEach(b=>{
+    const a=+b.dataset.v===v;
+    b.style.border=`1px solid ${a?'var(--gold)':'var(--border)'}`;
+    b.style.color=a?'var(--gold)':'var(--dim)';
+    b.style.background=a?'rgba(200,185,110,.1)':'transparent';
+  });
+  if(rerender&&results){renderTable();renderDopeCard();}
+}
+
+function setGame(g){
+  gameTarget=g;
+  document.querySelectorAll('.game-btn').forEach(b=>{
+    const a=b.dataset.g===g;
+    b.style.border=`1px solid ${a?'#b46c3c':'var(--border)'}`;
+    b.style.color=a?'var(--orange)':'var(--muted)';
+    b.style.background=a?'rgba(180,100,60,.15)':'transparent';
+  });
+  if(results){maxEthical=results.findLast(r=>r.energy>=ENERGY[gameTarget])?.range??0;renderSummaryCards();renderTable();renderChart();renderDopeCard();}
+}
+
+// ═══════════════════════════════════════════════════════════
+// INIT
+// ═══════════════════════════════════════════════════════════
+(function init(){
+  const rifles=seedDefault();
+
+  // Turret buttons
+  const tb=document.getElementById('turret-btns');
+  [[4,'¼ MOA'],[8,'⅛ MOA'],[2,'½ MOA']].forEach(([v,label])=>{
+    const b=document.createElement('button');
+    b.dataset.v=v; b.textContent=label;
+    b.style.border=`1px solid ${v===4?'var(--gold)':'var(--border)'}`;
+    b.style.color=v===4?'var(--gold)':'var(--dim)';
+    b.style.background=v===4?'rgba(200,185,110,.1)':'transparent';
+    b.onclick=()=>setTurret(v);
+    tb.appendChild(b);
+  });
+
+  // Game buttons
+  const gl=document.getElementById('game-list');
+  Object.entries(ENERGY).forEach(([g,thresh])=>{
+    const b=document.createElement('button');
+    b.className='game-btn'; b.dataset.g=g;
+    const a=g===gameTarget;
+    b.style.border=`1px solid ${a?'#b46c3c':'var(--border)'}`;
+    b.style.color=a?'var(--orange)':'var(--muted)';
+    b.style.background=a?'rgba(180,100,60,.15)':'transparent';
+    b.innerHTML=`<span>${g}</span><span>${thresh}+ ft·lb</span>`;
+    b.onclick=()=>setGame(g);
+    gl.appendChild(b);
+  });
+
+  // Auto-load first rifle
+  if(rifles.length>0){
+    loadRifleIntoSetup(rifles[0]);
+    switchTab('rifles'); // stay on rifles tab at start
+  }
+
+  renderRiflesList();
+})();
+</script>
+</body>
+</html>
